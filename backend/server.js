@@ -34,6 +34,11 @@ const startServer = async () => {
     app.use('/api/auth', authRoutes);
     app.use('/api/list', listRoutes);
 
+    // Root health check for hosting platforms and quick verification
+    app.get('/', (req, res) => {
+      res.json({ message: 'Server is running', status: 'ok' });
+    });
+
     // Health check
     app.get('/api/health', (req, res) => {
       res.json({ message: 'Server is running', cacheReady });
