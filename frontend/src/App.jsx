@@ -22,6 +22,8 @@ import Signup from './pages/Signup';
 import RecoverAccount from './pages/RecoverAccount';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
+import LoadingScreen from './components/LoadingScreen';
+import { useBackendHealth } from './hooks/useBackendHealth';
 import './App.css';
 
 function App() {
@@ -36,8 +38,14 @@ function App() {
 
 function AppShell({ user, logout, loading }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isHealthy, isInitialized } = useBackendHealth();
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
+
+  // Show loading screen if backend is not healthy and we've done at least one check
+  if (!isHealthy && isInitialized) {
+    return <LoadingScreen />;
+  }
 
   const renderAuthActions = (variant = 'desktop') => {
     if (user) {
