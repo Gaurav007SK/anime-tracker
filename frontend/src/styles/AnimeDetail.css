@@ -655,6 +655,53 @@
   gap: 0.75rem;
 }
 
+.other-seasons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.season-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.season-subsection h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-family: 'Chakra Petch', sans-serif;
+}
+
+.season-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.season-list li {
+  margin: 0;
+  padding: 0;
+}
+
+.season-link {
+  color: var(--accent-blue);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+  padding: 0.25rem 0;
+}
+
+.season-link:hover {
+  color: var(--accent-blue-light);
+  text-decoration: underline;
+}
+
 .error-message {
   background: rgba(233, 93, 93, 0.16);
   color: #ffd7d7;

@@ -838,34 +838,75 @@ function AnimeDetail() {
             )}
           </div>
 
-          {(relatedLoading || relatedSeasons.length > 0 || similarAnime.length > 0) && (
+          {/* Other Seasons Section */}
+          {relatedSeasons.length > 0 && (
             <section className="detail-related">
               <div className="detail-related-header">
                 <h3>
-                  {relatedSeasons.length > 0 ? (
-                    <>
-                      <Layers size={16} aria-hidden="true" />
-                      Other Seasons
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={16} aria-hidden="true" />
-                      Similar Anime
-                    </>
-                  )}
+                  <Layers size={16} aria-hidden="true" />
+                  Other Seasons
                 </h3>
-                <p>
-                  {relatedSeasons.length > 0
-                    ? 'Continue the story across sequels and prequels.'
-                    : 'More shows with similar vibes and themes.'}
-                </p>
+                <p>Continue the story across sequels and prequels.</p>
+              </div>
+
+              {relatedLoading ? (
+                <div className="detail-related-loading">Loading seasons...</div>
+              ) : (
+                <div className="other-seasons-container">
+                  {relatedSeasons.some((s) => s.type === 'Prequel') && (
+                    <div className="season-subsection">
+                      <h4>Prequel</h4>
+                      <ul className="season-list">
+                        {relatedSeasons
+                          .filter((s) => s.type === 'Prequel')
+                          .map((item) => (
+                            <li key={item.id}>
+                              <a href={`/anime/${item.id}`} className="season-link">
+                                {item.title}
+                              </a>
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {relatedSeasons.some((s) => s.type === 'Sequel') && (
+                    <div className="season-subsection">
+                      <h4>Sequel</h4>
+                      <ul className="season-list">
+                        {relatedSeasons
+                          .filter((s) => s.type === 'Sequel')
+                          .map((item) => (
+                            <li key={item.id}>
+                              <a href={`/anime/${item.id}`} className="season-link">
+                                {item.title}
+                              </a>
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Similar Anime Section */}
+          {(relatedLoading || similarAnime.length > 0) && (
+            <section className="detail-related">
+              <div className="detail-related-header">
+                <h3>
+                  <Sparkles size={16} aria-hidden="true" />
+                  Similar Anime
+                </h3>
+                <p>More shows with similar vibes and themes.</p>
               </div>
 
               {relatedLoading ? (
                 <div className="detail-related-loading">Loading recommendations...</div>
               ) : (
                 <div className="detail-related-grid">
-                  {(relatedSeasons.length > 0 ? relatedSeasons : similarAnime).map((item) => (
+                  {similarAnime.map((item) => (
                     <AnimeCard key={item.id} anime={item} />
                   ))}
                 </div>

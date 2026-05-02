@@ -301,100 +301,18 @@ const sortAnimeByAiringDate = (animeList = []) => {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const extractRelatedAnimeIds = (relations = [], visitedIds) => {
-  const discoveredIds = [];
+// Helper to format related anime from relation entries (lightweight, no extra detail fetch)
+const formatRelatedAnimeEntry = (entry, relationType) => {
+  const normalizedType = typeof relationType === 'string' ? relationType.trim() : null;
 
-  for (const relation of relations) {
-    if (!RELATION_SEASON_TYPES.has(relation?.relation)) {
-      continue;
-    }
-
-    for (const entry of relation.entry || []) {
-      const relatedId = parseInt(entry?.mal_id, 10);
-
-      if (!Number.isInteger(relatedId) || relatedId <= 0 || visitedIds.has(relatedId)) {
-        continue;
-      }
-
-      visitedIds.add(relatedId);
-      discoveredIds.push(relatedId);
-    }
-  }
-
-  return discoveredIds;
-};
-
-const collectAllRelatedSeasonIds = async (service, startId, delayMs = 350) => {
-  const queue = [{ id: startId, retries: 0 }];
-  const visitedIds = new Set([startId]);
-  const relatedIds = [];
-  const MAX_RETRIES = 3;
-  const MAX_BACKOFF = 3000; // 3 second max backoff
-
-  while (queue.length > 0) {
-    const { id: currentId, retries } = queue.shift();
-
-    // Always add delay before request to avoid bursts
-    await sleep(delayMs);
-
-    let relations = [];
-    try {
-      relations = await service.getAnimeRelations(currentId);
-      console.log(`[BFS] Fetched relations for anime ${currentId}`);
-    } catch (error) {
-      const isRateLimitError = error.message?.includes('Rate limited') || error.message?.includes('429');
-
-      if (isRateLimitError && retries < MAX_RETRIES) {
-        // Exponential backoff for rate limits: 350ms, 700ms, 1400ms, etc.
-        const backoffDelay = Math.min(delayMs * Math.pow(2, retries), MAX_BACKOFF);
-        console.warn(`[BFS] Rate limited for anime ${currentId}. Retry ${retries + 1}/${MAX_RETRIES} in ${backoffDelay}ms`);
-        
-        // Re-queue with incremented retry count
-        queue.push({ id: currentId, retries: retries + 1 });
-        await sleep(backoffDelay);
-      } else if (isRateLimitError) {
-        // Max retries exceeded - skip this anime
-        console.error(`[BFS] Max retries exceeded for anime ${currentId}. Skipping.`);
-      } else {
-        // Non-rate-limit errors (API error, not found, etc.) - skip and log
-        console.warn(`[BFS] Failed to fetch relations for anime ${currentId}: ${error.message}`);
-      }
-      continue;
-    }
-
-    // Extract new IDs from relations
-    const discoveredIds = extractRelatedAnimeIds(relations, visitedIds);
-    
-    if (discoveredIds.length > 0) {
-      console.log(`[BFS] Discovered ${discoveredIds.length} related anime from ID ${currentId}`);
-      relatedIds.push(...discoveredIds);
-      
-      // Queue all newly discovered IDs with retry count 0
-      queue.push(...discoveredIds.map(id => ({ id, retries: 0 })));
-    }
-  }
-
-  console.log(`[BFS] Traversal complete. Found ${relatedIds.length} related anime.`);
-  return relatedIds;
-};
-
-const fetchAnimeDetailsSequentially = async (service, animeIds, delayMs = 350) => {
-  const animeDetails = [];
-
-  for (const animeId of animeIds) {
-    try {
-      const details = await service.getAnimeDetails(animeId);
-      if (details) {
-        animeDetails.push(details);
-      }
-    } catch (error) {
-      console.warn(`[Jikan API] Failed to fetch anime details for ${animeId}: ${error.message}`);
-    }
-
-    await sleep(delayMs);
-  }
-
-  return animeDetails;
+  return {
+    id: entry?.mal_id,
+    title: entry?.name || entry?.title || 'Untitled Anime',
+    titleEnglish: entry?.title_english || null,
+    titleJapanese: entry?.title_japanese || null,
+    image: entry?.images?.jpg?.large_image_url || null,
+    type: normalizedType
+  };
 };
 
 // ============================================================================
@@ -798,9 +716,10 @@ const jikanService = {
   },
 
   /**
-   * Fetch related seasons (sequels/prequels) and similar anime
+   * Fetch direct related anime (immediate sequels/prequels) and recommendations
+   * Uses single API call - NO BFS traversal to reduce API consumption
    * @param {number} id - Anime MAL ID
-   * @returns {Promise<Object>} Related data
+   * @returns {Promise<Object>} Seasons and similar anime
    */
   async getRelatedAnime(id) {
     const animeId = parseInt(id);
@@ -813,26 +732,45 @@ const jikanService = {
 
     try {
       const result = await getWithReadThroughCache(
-        'related-v2',
+        'related-direct-v2',
         params,
         async () => {
-          const seasonIds = await collectAllRelatedSeasonIds(this, animeId, 350);
-          const normalizedSeasons = sortAnimeByAiringDate(
-            await fetchAnimeDetailsSequentially(this, seasonIds, 350)
-          );
+          // Fetch direct relations (no BFS traversal)
+          const relations = await this.getAnimeRelations(animeId);
+          
+          // Extract only Sequel and Prequel relations
+          const directSeasons = [];
+          const visitedIds = new Set([animeId]);
+          
+          for (const relation of relations) {
+            const relationType = typeof relation?.relation === 'string' ? relation.relation.trim() : '';
+
+            if (RELATION_SEASON_TYPES.has(relationType)) {
+              for (const entry of relation.entry || []) {
+                const relatedId = parseInt(entry?.mal_id, 10);
+                if (Number.isInteger(relatedId) && relatedId > 0 && !visitedIds.has(relatedId)) {
+                  directSeasons.push(formatRelatedAnimeEntry(entry, relationType));
+                  visitedIds.add(relatedId);
+                }
+              }
+            }
+          }
+          
+          // Fetch recommendations for similar anime
           const recommendations = await this.getAnimeRecommendations(animeId);
           const similar = recommendations
             .map(formatRecommendationEntry)
             .filter((entry) => entry.id && entry.id !== animeId)
             .slice(0, 12);
 
-          return {
-            seasons: normalizedSeasons,
-            similar
-          };
-        },
-        3600000
-      );
+
+            return {
+              seasons: directSeasons,
+              similar
+            };
+          },
+          3600000
+        );
 
       return result;
     } catch (error) {
