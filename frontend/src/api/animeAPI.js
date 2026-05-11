@@ -113,6 +113,12 @@ export const animeAPI = {
       api.get(`/anime/related/${id}`)
     ),
 
+  // Ping backend root (without /api) to check service health (useful for wake-from-sleep)
+  ping: () => {
+    // Use a direct axios call to the base (not the /api path)
+    return axios.get(API_BASE, { timeout: 7000 });
+  },
+
   // List operations
   getMyList: () => api.get('/list'),
   addToList: (anime) => api.post('/list/add', anime),

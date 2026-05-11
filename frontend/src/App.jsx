@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-router-dom';
 import {
   Clapperboard,
@@ -22,30 +22,41 @@ import Signup from './pages/Signup';
 import RecoverAccount from './pages/RecoverAccount';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
-import LoadingScreen from './components/LoadingScreen';
-import { useBackendHealth } from './hooks/useBackendHealth';
 import './App.css';
+import LoadingSplash from './components/LoadingSplash';
+import { animeAPI } from './api/animeAPI';
 
 function App() {
   const { user, logout, loading } = useAuth();
+  const [showSplash, setShowSplash] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const check = async () => {
+      try {
+        await animeAPI.ping();
+        // backend awake
+      } catch {
+        if (mounted) setShowSplash(true);
+      }
+    };
+
+    check();
+    return () => { mounted = false; };
+  }, []);
 
   return (
     <Router>
       <AppShell user={user} logout={logout} loading={loading} />
+      {showSplash && <LoadingSplash onContinue={() => setShowSplash(false)} />}
     </Router>
   );
 }
 
 function AppShell({ user, logout, loading }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isHealthy, isInitialized } = useBackendHealth();
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
-
-  // Show loading screen if backend is not healthy and we've done at least one check
-  if (!isHealthy && isInitialized) {
-    return <LoadingScreen />;
-  }
 
   const renderAuthActions = (variant = 'desktop') => {
     if (user) {
