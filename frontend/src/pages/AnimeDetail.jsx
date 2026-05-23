@@ -68,6 +68,8 @@ function AnimeDetail() {
   const [relatedSeasons, setRelatedSeasons] = useState([]);
   const [similarAnime, setSimilarAnime] = useState([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
+  const [relatedRequested, setRelatedRequested] = useState(false);
+  const [relatedError, setRelatedError] = useState('');
   const synopsisRef = useRef(null);
   const [isSynopsisExpanded, setIsSynopsisExpanded] = useState(false);
   const [isSynopsisClippable, setIsSynopsisClippable] = useState(false);
@@ -172,38 +174,38 @@ function AnimeDetail() {
   }, [anime?.synopsis]);
 
   useEffect(() => {
-    let isActive = true;
-
-    const fetchRelated = async () => {
-      try {
-        setRelatedLoading(true);
-        const response = await animeAPI.getRelatedAnime(id);
-        const seasons = response.data?.data?.seasons || [];
-        const similar = response.data?.data?.similar || [];
-
-        if (isActive) {
-          setRelatedSeasons(seasons);
-          setSimilarAnime(similar);
-        }
-      } catch (err) {
-        console.error('Error fetching related anime:', err);
-        if (isActive) {
-          setRelatedSeasons([]);
-          setSimilarAnime([]);
-        }
-      } finally {
-        if (isActive) {
-          setRelatedLoading(false);
-        }
-      }
-    };
-
-    fetchRelated();
-
-    return () => {
-      isActive = false;
-    };
+    setRelatedSeasons([]);
+    setSimilarAnime([]);
+    setRelatedRequested(false);
+    setRelatedLoading(false);
+    setRelatedError('');
   }, [id]);
+
+  const fetchRelated = useCallback(async () => {
+    if (relatedLoading) {
+      return;
+    }
+
+    try {
+      setRelatedRequested(true);
+      setRelatedLoading(true);
+      setRelatedError('');
+
+      const response = await animeAPI.getRelatedAnime(id);
+      const seasons = response.data?.data?.seasons || [];
+      const similar = response.data?.data?.similar || [];
+
+      setRelatedSeasons(seasons);
+      setSimilarAnime(similar);
+    } catch (err) {
+      setRelatedSeasons([]);
+      setSimilarAnime([]);
+      setRelatedError('Could not load related shows right now.');
+      console.error('Error fetching related anime:', err);
+    } finally {
+      setRelatedLoading(false);
+    }
+  }, [id, relatedLoading]);
 
   useEffect(() => {
     if (!user) {
@@ -838,8 +840,38 @@ function AnimeDetail() {
             )}
           </div>
 
+          {(!relatedRequested || relatedLoading || relatedError || (relatedSeasons.length === 0 && similarAnime.length === 0)) && (
+            <section className="detail-related">
+              <div className="detail-related-header">
+                <h3>
+                  <Sparkles size={16} aria-hidden="true" />
+                  Related Universe
+                </h3>
+                
+              </div>
+
+              {!relatedRequested && (
+                <button type="button" className="view-list-btn" onClick={fetchRelated}>
+                  Show Prequel, Sequel & Similar Anime
+                </button>
+              )}
+
+              {relatedLoading && (
+                <div className="detail-related-loading">Loading related anime...</div>
+              )}
+
+              {relatedRequested && !relatedLoading && relatedError && (
+                <div className="detail-related-loading">{relatedError}</div>
+              )}
+
+              {relatedRequested && !relatedLoading && !relatedError && relatedSeasons.length === 0 && similarAnime.length === 0 && (
+                <div className="detail-related-loading">No related anime found.</div>
+              )}
+            </section>
+          )}
+
           {/* Other Seasons Section */}
-          {relatedSeasons.length > 0 && (
+          {relatedRequested && !relatedLoading && relatedSeasons.length > 0 && (
             <section className="detail-related">
               <div className="detail-related-header">
                 <h3>
@@ -849,50 +881,46 @@ function AnimeDetail() {
                 <p>Continue the story across sequels and prequels.</p>
               </div>
 
-              {relatedLoading ? (
-                <div className="detail-related-loading">Loading seasons...</div>
-              ) : (
-                <div className="other-seasons-container">
-                  {relatedSeasons.some((s) => s.type === 'Prequel') && (
-                    <div className="season-subsection">
-                      <h4>Prequel</h4>
-                      <ul className="season-list">
-                        {relatedSeasons
-                          .filter((s) => s.type === 'Prequel')
-                          .map((item) => (
-                            <li key={item.id}>
-                              <a href={`/anime/${item.id}`} className="season-link">
-                                {item.title}
-                              </a>
-                            </li>
-                          ))}
-                      </ul>
-                    </div>
-                  )}
+              <div className="other-seasons-container">
+                {relatedSeasons.some((s) => s.type === 'Prequel') && (
+                  <div className="season-subsection">
+                    <h4>Prequel</h4>
+                    <ul className="season-list">
+                      {relatedSeasons
+                        .filter((s) => s.type === 'Prequel')
+                        .map((item) => (
+                          <li key={item.id}>
+                            <a href={`/anime/${item.id}`} className="season-link">
+                              {item.title}
+                            </a>
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                )}
 
-                  {relatedSeasons.some((s) => s.type === 'Sequel') && (
-                    <div className="season-subsection">
-                      <h4>Sequel</h4>
-                      <ul className="season-list">
-                        {relatedSeasons
-                          .filter((s) => s.type === 'Sequel')
-                          .map((item) => (
-                            <li key={item.id}>
-                              <a href={`/anime/${item.id}`} className="season-link">
-                                {item.title}
-                              </a>
-                            </li>
-                          ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
+                {relatedSeasons.some((s) => s.type === 'Sequel') && (
+                  <div className="season-subsection">
+                    <h4>Sequel</h4>
+                    <ul className="season-list">
+                      {relatedSeasons
+                        .filter((s) => s.type === 'Sequel')
+                        .map((item) => (
+                          <li key={item.id}>
+                            <a href={`/anime/${item.id}`} className="season-link">
+                              {item.title}
+                            </a>
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </section>
           )}
 
           {/* Similar Anime Section */}
-          {(relatedLoading || similarAnime.length > 0) && (
+          {relatedRequested && !relatedLoading && similarAnime.length > 0 && (
             <section className="detail-related">
               <div className="detail-related-header">
                 <h3>
@@ -902,15 +930,11 @@ function AnimeDetail() {
                 <p>More shows with similar vibes and themes.</p>
               </div>
 
-              {relatedLoading ? (
-                <div className="detail-related-loading">Loading recommendations...</div>
-              ) : (
-                <div className="detail-related-grid">
-                  {similarAnime.map((item) => (
-                    <AnimeCard key={item.id} anime={item} />
-                  ))}
-                </div>
-              )}
+              <div className="detail-related-grid">
+                {similarAnime.map((item) => (
+                  <AnimeCard key={item.id} anime={item} />
+                ))}
+              </div>
             </section>
           )}
 
