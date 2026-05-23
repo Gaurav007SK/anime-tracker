@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, SearchX, X } from 'lucide-react';
 import { animeAPI } from '../api/animeAPI';
 import AnimeCard from '../components/AnimeCard';
+import FetchErrorState from '../components/FetchErrorState';
 import '../styles/SearchResults.css';
 
 const SEARCH_PAGE_LIMIT = 25;
@@ -479,12 +480,12 @@ function SearchResults() {
       ) : (
         <>
           {error && (
-            <div className="error-message">
-              <p>{error}</p>
-              <button type="button" className="search-retry-btn" onClick={handleRetry}>
-                Retry Search
-              </button>
-            </div>
+            <FetchErrorState
+              message={error}
+              onRetry={handleRetry}
+              retryLabel="Try Again"
+              className="error-message"
+            />
           )}
 
           {results.length === 0 ? (

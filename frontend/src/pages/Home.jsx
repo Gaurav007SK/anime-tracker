@@ -13,12 +13,14 @@ import {
 import { animeAPI } from '../api/animeAPI';
 import HeroCarousel from '../components/HeroCarousel';
 import LazyLoadSection from '../components/LazyLoadSection';
+import FetchErrorState from '../components/FetchErrorState';
 import '../styles/Home.css';
 
 function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [trendingData, setTrendingData] = useState([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
+  const [trendingError, setTrendingError] = useState('');
   const navigate = useNavigate();
 
   // Fetch trending anime on mount
@@ -29,10 +31,13 @@ function Home() {
   const fetchTrendingAnime = async () => {
     try {
       setTrendingLoading(true);
+      setTrendingError('');
       const res = await animeAPI.getTrendingAnime(1);
       setTrendingData(res.data?.data?.slice(0, 20) || []);
     } catch (error) {
       console.error('[Home Error]', error);
+      setTrendingError('Could not load trending anime right now.');
+      setTrendingData([]);
     } finally {
       setTrendingLoading(false);
     }
@@ -162,6 +167,14 @@ function Home() {
 
       <section className="carousel-wrapper-main">
         <HeroCarousel animeList={trendingData} isLoading={trendingLoading} />
+        {trendingError && (
+          <FetchErrorState
+            message={trendingError}
+            onRetry={fetchTrendingAnime}
+            retryLabel="Try Again"
+            className="home-error-state"
+          />
+        )}
       </section>
 
       {sections.map((section) => (

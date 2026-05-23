@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { AlertTriangle, ChevronDown } from 'lucide-react';
 import { animeAPI } from '../api/animeAPI';
 import AnimeCard from '../components/AnimeCard';
+import FetchErrorState from '../components/FetchErrorState';
 import '../styles/GenreResults.css';
 
 const GENRE_CONFIG = {
@@ -125,10 +126,12 @@ function GenreResults() {
       </header>
 
       {error && (
-        <div className="genre-error">
-          <AlertTriangle size={18} aria-hidden="true" />
-          {error}
-        </div>
+        <FetchErrorState
+          message={error}
+          onRetry={() => fetchPages(1, 1, true)}
+          retryLabel="Try Again"
+          className="genre-error"
+        />
       )}
 
       {!error && animeList.length === 0 ? (

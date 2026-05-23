@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { AlertTriangle } from 'lucide-react';
 import AnimeCarousel from './AnimeCarousel';
 import { throttler } from '../utils/requestThrottler';
+import FetchErrorState from './FetchErrorState';
 
 function LazyLoadSection({ title, subtitle, icon, fetchData, seeMorePath }) {
   const SectionIcon = icon;
@@ -69,10 +69,12 @@ function LazyLoadSection({ title, subtitle, icon, fetchData, seeMorePath }) {
           </h2>
           {subtitle && <p className="carousel-subtitle">{subtitle}</p>}
         </div>
-        <div className="carousel-error">
-          <AlertTriangle size={16} aria-hidden="true" />
-          <p>{error}</p>
-        </div>
+        <FetchErrorState
+          message={error}
+          onRetry={loadData}
+          retryLabel="Try Again"
+          className="carousel-error"
+        />
       </div>
     );
   }

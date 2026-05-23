@@ -23,6 +23,7 @@ import {
 import { animeAPI } from '../api/animeAPI';
 import { useAuth } from '../context/AuthContext';
 import AnimeCard from '../components/AnimeCard';
+import FetchErrorState from '../components/FetchErrorState';
 import '../styles/AnimeDetail.css';
 
 const LIST_STATUS_OPTIONS = [
@@ -97,6 +98,7 @@ function AnimeDetail() {
   const fetchAnimeDetails = useCallback(async () => {
     try {
       setLoading(true);
+      setError('');
       const response = await animeAPI.getAnimeDetails(id);
       setAnime(response.data.data);
     } catch (err) {
@@ -506,7 +508,15 @@ function AnimeDetail() {
   }
 
   if (error || !anime) {
-    return <div className="error-message">{error || 'Anime not found'}</div>;
+    return (
+      <div className="error-message">
+        <FetchErrorState
+          message={error || 'Anime not found'}
+          onRetry={fetchAnimeDetails}
+          retryLabel="Try Again"
+        />
+      </div>
+    );
   }
 
   const backdropStyle = anime?.image ? { backgroundImage: `url(${anime.image})` } : undefined;
@@ -861,7 +871,12 @@ function AnimeDetail() {
               )}
 
               {relatedRequested && !relatedLoading && relatedError && (
-                <div className="detail-related-loading">{relatedError}</div>
+                <FetchErrorState
+                  message={relatedError}
+                  onRetry={fetchRelated}
+                  retryLabel="Try Again"
+                  className="detail-related-error"
+                />
               )}
 
               {relatedRequested && !relatedLoading && !relatedError && relatedSeasons.length === 0 && similarAnime.length === 0 && (
