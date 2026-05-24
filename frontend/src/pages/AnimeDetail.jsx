@@ -508,10 +508,10 @@ function AnimeDetail() {
       return undefined;
     }
 
-    document.title = headingTitle ? `${headingTitle} | Anime Tracker` : 'Anime Tracker';
+    document.title = headingTitle ? `${headingTitle} | Anime Tracker` : 'Otaku Control Room';
 
     return () => {
-      document.title = 'Anime Tracker';
+      document.title = 'Otaku Control Room';
     };
   }, [headingTitle]);
 

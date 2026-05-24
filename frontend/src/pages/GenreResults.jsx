@@ -61,10 +61,10 @@ function GenreResults() {
       return undefined;
     }
 
-    document.title = config?.title ? `${config.title} | Anime Tracker` : 'Anime Tracker';
+    document.title = config?.title ? `${config.title} | Anime Tracker` : 'Otaku Control Room';
 
     return () => {
-      document.title = 'Anime Tracker';
+      document.title = 'Otaku Control Room';
     };
   }, [config]);
 
