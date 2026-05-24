@@ -273,6 +273,41 @@ const animeController = {
   },
 
   /**
+   * Get anime reviews
+   */
+  async getAnimeReviews(req, res) {
+    try {
+      const { id } = req.params;
+      const { page = 1 } = req.query;
+
+      if (!id || isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Valid anime ID is required'
+        });
+      }
+
+      console.log(`[Controller] Reviews: ID ${id}, Page ${page}`);
+      const reviews = await jikanService.getAnimeReviews(id, parseInt(page, 10));
+
+      return res.json({
+        success: true,
+        data: reviews.items,
+        page: reviews.page,
+        hasNextPage: reviews.hasNextPage,
+        count: reviews.items.length
+      });
+    } catch (error) {
+      console.error(`[Controller Error] Reviews fetch failed: ${error.message}`);
+      const statusCode = error.message.includes('not found') ? 404 : 500;
+      return res.status(statusCode).json({
+        success: false,
+        error: error.message
+      });
+    }
+  },
+
+  /**
    * Get all available search filters
    */
   async getSearchFilters(req, res) {

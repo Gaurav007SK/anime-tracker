@@ -194,6 +194,39 @@ const formatRecommendationEntry = (recommendation) => {
   };
 };
 
+const formatReviewEntry = (review) => {
+  const userImage = review?.user?.images?.jpg?.image_url
+    || review?.user?.images?.webp?.image_url
+    || null;
+
+  return {
+    id: review?.mal_id,
+    url: review?.url || null,
+    date: review?.date || null,
+    review: review?.review || '',
+    score: Number.isFinite(review?.score) ? review.score : null,
+    tags: Array.isArray(review?.tags) ? review.tags : [],
+    isSpoiler: Boolean(review?.is_spoiler),
+    isPreliminary: Boolean(review?.is_preliminary),
+    episodesWatched: Number.isFinite(review?.episodes_watched) ? review.episodes_watched : null,
+    reactions: {
+      overall: review?.reactions?.overall || 0,
+      nice: review?.reactions?.nice || 0,
+      loveIt: review?.reactions?.love_it || 0,
+      funny: review?.reactions?.funny || 0,
+      confusing: review?.reactions?.confusing || 0,
+      informative: review?.reactions?.informative || 0,
+      wellWritten: review?.reactions?.well_written || 0,
+      creative: review?.reactions?.creative || 0
+    },
+    user: {
+      username: review?.user?.username || 'Unknown user',
+      url: review?.user?.url || null,
+      image: userImage
+    }
+  };
+};
+
 const normalizeSearchText = (value = '') => {
   return String(value)
     .toLowerCase()
@@ -776,6 +809,53 @@ const jikanService = {
     } catch (error) {
       console.error(`[Jikan API Error] Related anime fetch failed: ${error.message}`);
       throw new Error(`Failed to fetch related anime: ${error.message}`);
+    }
+  },
+
+  /**
+   * Fetch anime reviews
+   * Endpoint: GET /anime/{id}/reviews
+   * @param {number} id - Anime MAL ID
+   * @param {number} page - Page number
+   * @returns {Promise<Object>} Reviews list and pagination metadata
+   */
+  async getAnimeReviews(id, page = 1) {
+    const animeId = parseInt(id, 10);
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+
+    if (!animeId || animeId <= 0) {
+      throw new Error('Valid anime ID is required');
+    }
+
+    const params = { id: animeId, page: pageNum };
+
+    try {
+      const result = await getWithReadThroughCache(
+        'reviews',
+        params,
+        async () => {
+          const response = await makeRateLimitedRequest(`${JIKAN_BASE_URL}/anime/${animeId}/reviews`, {
+            page: pageNum
+          });
+
+          const rawReviews = response.data?.data || [];
+          return {
+            items: rawReviews.map(formatReviewEntry),
+            page: pageNum,
+            hasNextPage: Boolean(response.data?.pagination?.has_next_page)
+          };
+        },
+        3600000
+      );
+
+      return result;
+    } catch (error) {
+      const errorMsg = error.response?.status === 404
+        ? `Anime not found: ${animeId}`
+        : error.response?.status === 429
+          ? 'Rate limited by Jikan API'
+          : error.message;
+      throw new Error(`Failed to fetch reviews: ${errorMsg}`);
     }
   },
 

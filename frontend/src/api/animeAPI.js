@@ -113,6 +113,11 @@ export const animeAPI = {
       api.get(`/anime/related/${id}`)
     ),
 
+  getAnimeReviews: (id, page = 1) =>
+    getCachedRequest(`reviews:${id}:${page}`, () =>
+      api.get(`/anime/reviews/${id}`, { params: { page } })
+    ),
+
   // Ping backend root (without /api) to check service health (useful for wake-from-sleep)
   ping: () => {
     // Use a direct axios call to the base (not the /api path)

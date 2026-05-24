@@ -27,5 +27,8 @@ router.get('/details/:id', animeController.getAnimeDetails);
 // Get related seasons or similar anime
 router.get('/related/:id', animeController.getRelatedAnime);
 
+// Get anime reviews
+router.get('/reviews/:id', animeController.getAnimeReviews);
+
 module.exports = router;
 

@@ -18,7 +18,12 @@ import {
   Languages,
   Hash,
   Layers,
-  Sparkles
+  Sparkles,
+  MessageSquareText,
+  ShieldAlert,
+  ThumbsUp,
+  Heart,
+  Laugh
 } from 'lucide-react';
 import { animeAPI } from '../api/animeAPI';
 import { useAuth } from '../context/AuthContext';
@@ -36,9 +41,27 @@ const STAR_COUNT = 5;
 const QUICK_ADD_STAR_VALUES = [1, 2, 3, 4, 5];
 const STAR_STEP = 0.25;
 const SYNOPSIS_COLLAPSE_HEIGHT = 132;
+const REVIEW_PREVIEW_LENGTH = 420;
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const hasJapaneseCharacters = (value) => /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF]/.test(value);
+
+const formatReviewDate = (isoDate) => {
+  if (!isoDate) {
+    return 'Unknown date';
+  }
+
+  const parsed = new Date(isoDate);
+  if (Number.isNaN(parsed.getTime())) {
+    return 'Unknown date';
+  }
+
+  return parsed.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+};
 
 const getStarValueFromPointer = (event) => {
   const rect = event.currentTarget.getBoundingClientRect();
@@ -71,6 +94,17 @@ function AnimeDetail() {
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [relatedRequested, setRelatedRequested] = useState(false);
   const [relatedError, setRelatedError] = useState('');
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsRequested, setReviewsRequested] = useState(false);
+  const [reviewsError, setReviewsError] = useState('');
+  const [reviewsPage, setReviewsPage] = useState(0);
+  const [reviewsHasNextPage, setReviewsHasNextPage] = useState(false);
+  const [reviewsLoadingMore, setReviewsLoadingMore] = useState(false);
+  const [expandedReviewIds, setExpandedReviewIds] = useState({});
+  const [revealedSpoilerIds, setRevealedSpoilerIds] = useState({});
+  const [showAllReviews, setShowAllReviews] = useState(false);
+  const [hideReviewsList, setHideReviewsList] = useState(false);
   const synopsisRef = useRef(null);
   const [isSynopsisExpanded, setIsSynopsisExpanded] = useState(false);
   const [isSynopsisClippable, setIsSynopsisClippable] = useState(false);
@@ -181,7 +215,77 @@ function AnimeDetail() {
     setRelatedRequested(false);
     setRelatedLoading(false);
     setRelatedError('');
+    setReviews([]);
+    setReviewsRequested(false);
+    setReviewsLoading(false);
+    setReviewsError('');
+    setReviewsPage(0);
+    setReviewsHasNextPage(false);
+    setReviewsLoadingMore(false);
+    setExpandedReviewIds({});
+    setRevealedSpoilerIds({});
+    setShowAllReviews(false);
+    setHideReviewsList(false);
   }, [id]);
+
+  const fetchReviews = useCallback(async () => {
+    if (reviewsLoading) {
+      return;
+    }
+
+    try {
+      setReviewsRequested(true);
+      setReviewsLoading(true);
+      setReviewsError('');
+
+      const response = await animeAPI.getAnimeReviews(id, 1);
+      const fetchedReviews = response.data?.data || [];
+      setReviews(fetchedReviews);
+      setReviewsPage(response.data?.page || 1);
+      setReviewsHasNextPage(Boolean(response.data?.hasNextPage));
+      setShowAllReviews(false);
+      setHideReviewsList(false);
+    } catch (err) {
+      setReviews([]);
+      setReviewsError('Could not load reviews right now.');
+      setReviewsPage(0);
+      setReviewsHasNextPage(false);
+      console.error('Error fetching anime reviews:', err);
+    } finally {
+      setReviewsLoading(false);
+    }
+  }, [id, reviewsLoading]);
+
+  const fetchMoreReviews = useCallback(async () => {
+    if (reviewsLoading || reviewsLoadingMore || !reviewsHasNextPage) {
+      return;
+    }
+
+    const nextPage = Math.max(1, reviewsPage + 1);
+
+    try {
+      setReviewsLoadingMore(true);
+
+      const response = await animeAPI.getAnimeReviews(id, nextPage);
+      const fetchedReviews = response.data?.data || [];
+      const returnedPage = response.data?.page || nextPage;
+
+      setReviews((prev) => {
+        const seenIds = new Set(prev.map((item) => item.id));
+        const uniqueIncoming = fetchedReviews.filter((item) => !seenIds.has(item.id));
+        return [...prev, ...uniqueIncoming];
+      });
+
+      setReviewsPage(returnedPage);
+      setReviewsHasNextPage(Boolean(response.data?.hasNextPage));
+      setReviewsError('');
+    } catch (err) {
+      setReviewsError('Could not load more reviews right now.');
+      console.error('Error fetching more anime reviews:', err);
+    } finally {
+      setReviewsLoadingMore(false);
+    }
+  }, [id, reviewsHasNextPage, reviewsLoading, reviewsLoadingMore, reviewsPage]);
 
   const fetchRelated = useCallback(async () => {
     if (relatedLoading) {
@@ -502,6 +606,21 @@ function AnimeDetail() {
   const displayedStarCount = hoverRating || selectedStarCount;
   const displayedScore = Number((displayedStarCount * 2).toFixed(1));
   const fillPercentage = clamp((displayedStarCount / STAR_COUNT) * 100, 0, 100);
+  const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 2);
+
+  const toggleReviewExpanded = (reviewId) => {
+    setExpandedReviewIds((prev) => ({
+      ...prev,
+      [reviewId]: !prev[reviewId]
+    }));
+  };
+
+  const toggleReviewSpoiler = (reviewId) => {
+    setRevealedSpoilerIds((prev) => ({
+      ...prev,
+      [reviewId]: !prev[reviewId]
+    }));
+  };
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -861,6 +980,170 @@ function AnimeDetail() {
               </section>
             )}
           </div>
+
+          <section className="detail-related review-section">
+            <div className="detail-related-header">
+              <h3>
+                <MessageSquareText size={16} aria-hidden="true" />
+                Community Reviews
+              </h3>
+            </div>
+
+            {!reviewsRequested && (
+              <button type="button" className="view-list-btn" onClick={fetchReviews}>
+                Show Reviews
+              </button>
+            )}
+
+            {reviewsLoading && (
+              <div className="detail-related-loading">Loading reviews...</div>
+            )}
+
+            {reviewsRequested && !reviewsLoading && reviewsError && (
+              <FetchErrorState
+                message={reviewsError}
+                onRetry={fetchReviews}
+                retryLabel="Try Again"
+                className="detail-related-error"
+              />
+            )}
+
+            {reviewsRequested && !reviewsLoading && !reviewsError && reviews.length === 0 && (
+              <div className="detail-related-loading">No reviews available for this anime yet.</div>
+            )}
+
+            {reviewsRequested && !reviewsLoading && !reviewsError && reviews.length > 0 && (
+              <>
+                <div className="review-list-controls">
+                  <button
+                    type="button"
+                    className="review-expand-btn"
+                    onClick={() => setHideReviewsList((currentValue) => !currentValue)}
+                  >
+                    {hideReviewsList ? 'Show Reviews' : 'Hide Reviews'}
+                  </button>
+
+                  <span className="review-count-note">
+                    {hideReviewsList
+                      ? `${reviews.length} reviews loaded`
+                      : `Showing ${displayedReviews.length} of ${reviews.length}`}
+                  </span>
+                </div>
+
+                {!hideReviewsList && (
+                  <div className="review-list">
+                    {displayedReviews.map((item) => {
+                  const isExpanded = Boolean(expandedReviewIds[item.id]);
+                  const isSpoilerLocked = item.isSpoiler && !revealedSpoilerIds[item.id];
+                  const reviewText = String(item.review || '');
+                  const isLong = reviewText.length > REVIEW_PREVIEW_LENGTH;
+                  const previewText = isLong && !isExpanded
+                    ? `${reviewText.slice(0, REVIEW_PREVIEW_LENGTH).trim()}...`
+                    : reviewText;
+
+                      return (
+                        <article key={item.id} className="review-card">
+                      <header className="review-card-header">
+                        <div className="review-user">
+                          <img
+                            src={item.user?.image || 'https://cdn.myanimelist.net/images/kaomoji_mal_white.png'}
+                            alt={item.user?.username || 'Reviewer avatar'}
+                            className="review-user-avatar"
+                            loading="lazy"
+                          />
+                          <div>
+                            <p className="review-username">{item.user?.username || 'Unknown user'}</p>
+                            <p className="review-date">{formatReviewDate(item.date)}</p>
+                          </div>
+                        </div>
+
+                        <div className="review-meta">
+                          {Array.isArray(item.tags) && item.tags.length > 0 && (
+                            <span className="review-tag">{item.tags[0]}</span>
+                          )}
+                          {item.score ? <span className="review-score">{item.score}/10</span> : null}
+                          {item.isSpoiler ? (
+                            <span className="review-spoiler">
+                              <ShieldAlert size={13} aria-hidden="true" />
+                              Spoiler
+                            </span>
+                          ) : null}
+                        </div>
+                      </header>
+
+                      <p className={`review-text${isSpoilerLocked ? ' is-spoiler-locked' : ''}`}>
+                        {previewText}
+                      </p>
+
+                      <div className="review-actions">
+                        {item.isSpoiler && (
+                          <button
+                            type="button"
+                            className="review-expand-btn"
+                            onClick={() => toggleReviewSpoiler(item.id)}
+                          >
+                            {isSpoilerLocked ? 'Show Spoiler' : 'Hide Spoiler'}
+                          </button>
+                        )}
+
+                        {isLong && (
+                          <button
+                            type="button"
+                            className="review-expand-btn"
+                            onClick={() => toggleReviewExpanded(item.id)}
+                          >
+                            {isExpanded ? 'Show less' : 'Read more'}
+                          </button>
+                        )}
+
+                        {item.url && (
+                          <a href={item.url} target="_blank" rel="noreferrer" className="review-open-link">
+                            Open
+                          </a>
+                        )}
+                      </div>
+
+                          <div className="review-reactions">
+                            <span><ThumbsUp size={14} aria-hidden="true" /> {item.reactions?.nice || 0}</span>
+                            <span><Heart size={14} aria-hidden="true" /> {item.reactions?.loveIt || 0}</span>
+                            <span><Laugh size={14} aria-hidden="true" /> {item.reactions?.funny || 0}</span>
+                            <span className="review-reactions-overall">Overall {item.reactions?.overall || 0}</span>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {!hideReviewsList && (
+                  <div className="review-pagination-actions">
+                    {reviews.length > 2 && (
+                      <button
+                        type="button"
+                        className="review-expand-btn"
+                        onClick={() => setShowAllReviews((currentValue) => !currentValue)}
+                      >
+                        {showAllReviews ? 'Show fewer reviews' : `Show all reviews (${reviews.length})`}
+                      </button>
+                    )}
+
+                    {reviewsHasNextPage ? (
+                      <button
+                        type="button"
+                        className="review-expand-btn"
+                        onClick={fetchMoreReviews}
+                        disabled={reviewsLoadingMore}
+                      >
+                        {reviewsLoadingMore ? 'Loading more reviews...' : 'Load More Reviews'}
+                      </button>
+                    ) : (
+                      <p className="review-pagination-note">You have reached the end of available reviews.</p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </section>
 
           {(!relatedRequested || relatedLoading || relatedError || (relatedSeasons.length === 0 && similarAnime.length === 0)) && (
             <section className="detail-related">
