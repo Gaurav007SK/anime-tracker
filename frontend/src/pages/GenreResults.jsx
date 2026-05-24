@@ -57,6 +57,18 @@ function GenreResults() {
   const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+
+    document.title = config?.title ? `${config.title} | Anime Tracker` : 'Anime Tracker';
+
+    return () => {
+      document.title = 'Anime Tracker';
+    };
+  }, [config]);
+
+  useEffect(() => {
     setAnimeList([]);
     setPage(1);
     setHasMore(true);

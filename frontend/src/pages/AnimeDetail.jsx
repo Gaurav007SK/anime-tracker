@@ -503,6 +503,18 @@ function AnimeDetail() {
   const displayedScore = Number((displayedStarCount * 2).toFixed(1));
   const fillPercentage = clamp((displayedStarCount / STAR_COUNT) * 100, 0, 100);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+
+    document.title = headingTitle ? `${headingTitle} | Anime Tracker` : 'Anime Tracker';
+
+    return () => {
+      document.title = 'Anime Tracker';
+    };
+  }, [headingTitle]);
+
   if (loading) {
     return <div className="loading">Loading...</div>;
   }

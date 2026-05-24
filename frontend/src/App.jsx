@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-router-dom';
 import {
-  Clapperboard,
   House,
   LibraryBig,
   Sparkles,
@@ -25,6 +24,7 @@ import { useAuth } from './context/AuthContext';
 import './App.css';
 import LoadingSplash from './components/LoadingSplash';
 import { animeAPI } from './api/animeAPI';
+import appLogo from './assets/applogo.png';
 
 function App() {
   const { user, logout, loading } = useAuth();
@@ -104,7 +104,7 @@ function AppShell({ user, logout, loading }) {
         <div className="nav-container">
           <Link to="/" className="logo" onClick={closeMobileMenu}>
             <span className="logo-badge" aria-hidden="true">
-              <Clapperboard size={18} />
+              <img src={appLogo} alt="" className="logo-badge-image" />
             </span>
             <span className="logo-text-wrap">
               <span className="logo-kicker">Otaku Control Room</span>
