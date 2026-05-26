@@ -5,26 +5,65 @@ import '../styles/LoadingSplash.css';
 
 const SONGS = [
   {
-    src: '/Nyanpasu  Yabure kabure  AMV Lyrics.mp3',
-    title: 'Nyanpasu - AMV'
+    videoId: 'lnKjKEEoheM',
+    title: 'Nyanpasu Yabure Kabure with Lyrics'
   },
   {
-    src: '/好きだから。 『ユイカ』【MV】.mp3',
-    title: 'Suki Dakara - Yuika'
+    videoId: '8iuLXODzL04',
+    title: 'YOASOBI「たぶん」Official Music Video'
   },
   {
-    src: '/YOASOBI「たぶん」Official Music  Video.mp3',
-    title: 'Tabun - YOASOBI'
+    videoId: 'Az5XPYw16Eg',
+    title: 'Suki Dakara/好きだから'
   }
-].map((song) => ({ ...song, src: encodeURI(song.src) }));
+];
+
+const loadYouTubeIframeAPI = () => {
+  if (window.YT?.Player) {
+    return Promise.resolve(window.YT);
+  }
+
+  if (window.__animeTrackerYouTubeApiPromise) {
+    return window.__animeTrackerYouTubeApiPromise;
+  }
+
+  window.__animeTrackerYouTubeApiPromise = new Promise((resolve) => {
+    const previousHandler = window.onYouTubeIframeAPIReady;
+
+    window.onYouTubeIframeAPIReady = () => {
+      if (typeof previousHandler === 'function') {
+        previousHandler();
+      }
+      resolve(window.YT);
+    };
+
+    if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://www.youtube.com/iframe_api';
+      script.async = true;
+      document.head.appendChild(script);
+    }
+  });
+
+  return window.__animeTrackerYouTubeApiPromise;
+};
 
 export default function LoadingSplash({ onContinue }) {
-  const audioRef = useRef(null);
+  const playerContainerRef = useRef(null);
+  const playerRef = useRef(null);
   const [index, setIndex] = useState(0);
-  const [playing, setPlaying] = useState(false);
+  const [playing, setPlaying] = useState(true);
   const [serverReady, setServerReady] = useState(false);
   const [nextAttemptIn, setNextAttemptIn] = useState(3);
+  const [playerReady, setPlayerReady] = useState(false);
   const pollIntervalRef = useRef(3000);
+  const indexRef = useRef(index);
+  const playingRef = useRef(playing);
+
+  useEffect(() => {
+    indexRef.current = index;
+    playingRef.current = playing;
+  }, [index, playing]);
 
   useEffect(() => {
     let mounted = true;
@@ -65,33 +104,106 @@ export default function LoadingSplash({ onContinue }) {
   }, []);
 
   useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    a.pause();
-    if (playing) {
-      const p = a.play();
-      if (p && p.catch) p.catch(() => setPlaying(false));
+    let isMounted = true;
+
+    const initializePlayer = async () => {
+      await loadYouTubeIframeAPI();
+
+      if (!isMounted || !playerContainerRef.current || playerRef.current) {
+        return;
+      }
+
+      playerRef.current = new window.YT.Player(playerContainerRef.current, {
+        videoId: SONGS[indexRef.current].videoId,
+        playerVars: {
+          autoplay: 1,
+          controls: 0,
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1,
+          iv_load_policy: 3,
+          enablejsapi: 1
+        },
+        events: {
+          onReady: () => {
+            if (!isMounted) return;
+            setPlayerReady(true);
+            if (playingRef.current) {
+              playerRef.current?.playVideo();
+            }
+          }
+        }
+      });
+    };
+
+    initializePlayer();
+
+    return () => {
+      isMounted = false;
+      if (playerRef.current) {
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!playerReady || !playerRef.current) {
+      return;
     }
-  }, [playing, index]);
+
+    const player = playerRef.current;
+    player.loadVideoById(SONGS[indexRef.current].videoId);
+    if (playingRef.current) {
+      player.playVideo();
+    } else {
+      player.pauseVideo();
+    }
+  }, [index, playerReady]);
+
+  useEffect(() => {
+    if (!playerReady || !playerRef.current) {
+      return;
+    }
+
+    if (playing) {
+      playerRef.current.playVideo();
+    } else {
+      playerRef.current.pauseVideo();
+    }
+  }, [playing, playerReady]);
 
   useEffect(() => () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.pause();
-    audio.currentTime = 0;
+    if (!playerRef.current) return;
+    playerRef.current.stopVideo();
+    playerRef.current.destroy();
+    playerRef.current = null;
   }, []);
 
   const togglePlay = () => setPlaying((p) => !p);
-  const next = () => setIndex((i) => (i + 1) % SONGS.length);
-  const prev = () => setIndex((i) => (i - 1 + SONGS.length) % SONGS.length);
+  const syncPlayerToIndex = (nextIndex, shouldAutoPlay = playingRef.current) => {
+    setIndex(nextIndex);
+
+    if (!playerReady || !playerRef.current) {
+      return;
+    }
+
+    playerRef.current.loadVideoById(SONGS[nextIndex].videoId);
+
+    if (shouldAutoPlay) {
+      playerRef.current.playVideo();
+    } else {
+      playerRef.current.pauseVideo();
+    }
+  };
+
+  const next = () => syncPlayerToIndex((indexRef.current + 1) % SONGS.length);
+  const prev = () => syncPlayerToIndex((indexRef.current - 1 + SONGS.length) % SONGS.length);
   const currentSong = SONGS[index];
 
   const handleContinue = () => {
-    const audio = audioRef.current;
-
-    if (audio) {
-      audio.pause();
-      audio.currentTime = 0;
+    if (playerRef.current) {
+      playerRef.current.stopVideo();
     }
 
     setPlaying(false);
@@ -102,9 +214,8 @@ export default function LoadingSplash({ onContinue }) {
     <div className="loading-splash" role="dialog" aria-modal="true">
       <div className="loading-splash-inner">
         <div className="loading-visual">
-          <div className={`logo-spin${playing ? ' spinning' : ''}`}>
-            <Music size={20} />
-            <span>OTAKU</span>
+          <div className="youtube-player-shell">
+            <div ref={playerContainerRef} className="youtube-player-frame" aria-label="YouTube music player" />
           </div>
           <div className="loading-dot-grid" />
         </div>
@@ -143,7 +254,6 @@ export default function LoadingSplash({ onContinue }) {
             </button>
           </div>
 
-          <audio ref={audioRef} src={currentSong.src} loop onEnded={() => setPlaying(false)} />
         </div>
 
         <div className="loading-actions">

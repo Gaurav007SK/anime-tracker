@@ -30,6 +30,28 @@
   justify-content: center;
 }
 
+.youtube-player-shell {
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(135, 197, 244, 0.28);
+  background: rgba(8, 22, 38, 0.9);
+  box-shadow: var(--shadow-soft);
+}
+
+.youtube-player-frame {
+  width: 100%;
+  height: 100%;
+}
+
+.youtube-player-frame iframe {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .logo-spin {
   width: 140px;
   height: 140px;
@@ -57,9 +79,9 @@
 
 .loading-dot-grid {
   margin-top: 12px;
-  width: 110px;
+  width: 100%;
   height: 10px;
-  background: linear-gradient(90deg, var(--accent-gold), transparent 60%);
+  background: linear-gradient(90deg, var(--accent-gold), transparent 95%);
   border-radius: 6px;
   opacity: 0.9;
 }
@@ -129,7 +151,7 @@
 
 @media (max-width: 640px) {
   .loading-splash-inner { grid-template-columns: 1fr; padding:16px; }
-  .logo-spin { width: 110px; height: 110px; font-size:18px; }
+  .youtube-player-shell { max-width: 100%; }
 }
 
 @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
