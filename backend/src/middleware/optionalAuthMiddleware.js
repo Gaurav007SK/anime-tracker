@@ -1,22 +1,16 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-const authenticate = async (req, res, next) => {
+const optionalAuthenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization || '';
 
     if (!authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authorization token is required'
-      });
+      return next();
     }
 
     if (!process.env.JWT_SECRET) {
-      return res.status(500).json({
-        success: false,
-        error: 'Server auth configuration is missing'
-      });
+      return next();
     }
 
     const token = authHeader.slice(7);
@@ -25,18 +19,10 @@ const authenticate = async (req, res, next) => {
     const user = await User.findById(decoded.userId).select(
       '_id username displayName bio avatarUrl lastOnline followers following'
     );
+
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid token'
-      });
+      return next();
     }
-
-    user.lastOnline = new Date();
-    await user.save();
-
-    const followersCount = Array.isArray(user.followers) ? user.followers.length : 0;
-    const followingCount = Array.isArray(user.following) ? user.following.length : 0;
 
     req.user = {
       id: user._id.toString(),
@@ -45,17 +31,14 @@ const authenticate = async (req, res, next) => {
       bio: user.bio || '',
       avatarUrl: user.avatarUrl || '',
       lastOnline: user.lastOnline,
-      followersCount,
-      followingCount
+      followersCount: Array.isArray(user.followers) ? user.followers.length : 0,
+      followingCount: Array.isArray(user.following) ? user.following.length : 0
     };
 
     return next();
   } catch (error) {
-    return res.status(401).json({
-      success: false,
-      error: 'Authentication failed'
-    });
+    return next();
   }
 };
 
-module.exports = authenticate;
+module.exports = optionalAuthenticate;

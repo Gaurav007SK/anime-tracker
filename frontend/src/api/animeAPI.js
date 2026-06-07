@@ -118,6 +118,12 @@ export const animeAPI = {
       api.get(`/anime/reviews/${id}`, { params: { page } })
     ),
 
+  getUserProfile: (username) => api.get(`/users/${username}`),
+  getMyProfile: () => api.get('/users/me'),
+  updateMyProfile: (payload) => api.put('/users/me', payload),
+  followUser: (username) => api.post(`/users/${username}/follow`),
+  unfollowUser: (username) => api.delete(`/users/${username}/follow`),
+
   // Ping backend root (without /api) to check service health (useful for wake-from-sleep)
   ping: () => {
     // Use a direct axios call to the base (not the /api path)

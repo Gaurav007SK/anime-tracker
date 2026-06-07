@@ -8,6 +8,31 @@ const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
 const normalizeUsername = (value) => String(value || '').trim().toLowerCase();
 const normalizeRecoveryAnswer = (value) => String(value || '').trim().toLowerCase();
 
+const buildPublicUser = (user) => {
+  if (!user) {
+    return null;
+  }
+
+  const userId = user._id || user.id;
+  const followersCount = typeof user.followersCount === 'number'
+    ? user.followersCount
+    : (Array.isArray(user.followers) ? user.followers.length : 0);
+  const followingCount = typeof user.followingCount === 'number'
+    ? user.followingCount
+    : (Array.isArray(user.following) ? user.following.length : 0);
+
+  return {
+    id: userId ? userId.toString() : undefined,
+    username: user.username,
+    displayName: user.displayName || user.username,
+    bio: user.bio || '',
+    avatarUrl: user.avatarUrl || '',
+    lastOnline: user.lastOnline || user.updatedAt || user.createdAt,
+    followersCount,
+    followingCount
+  };
+};
+
 const createToken = (user) => {
   if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET is not configured');
@@ -24,11 +49,6 @@ const createToken = (user) => {
     }
   );
 };
-
-const publicUser = (user) => ({
-  id: user._id.toString(),
-  username: user.username
-});
 
 const validateUsername = (username) => {
   if (!username || username.length < 3 || username.length > 30) {
@@ -100,6 +120,10 @@ const authController = {
       const user = await User.create({
         username: normalizedUsername,
         passwordHash,
+        displayName: normalizedUsername,
+        bio: '',
+        avatarUrl: '',
+        lastOnline: new Date(),
         recoveryQuestion: String(recoveryQuestion).trim(),
         recoveryAnswerHash
       });
@@ -110,7 +134,7 @@ const authController = {
         success: true,
         data: {
           token,
-          user: publicUser(user)
+          user: buildPublicUser(user)
         }
       });
     } catch (error) {
@@ -146,7 +170,7 @@ const authController = {
         success: true,
         data: {
           token,
-          user: publicUser(user)
+          user: buildPublicUser(user)
         }
       });
     } catch (error) {
@@ -235,7 +259,7 @@ const authController = {
     return res.json({
       success: true,
       data: {
-        user: req.user
+        user: buildPublicUser(req.user)
       }
     });
   }

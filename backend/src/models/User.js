@@ -16,6 +16,41 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    displayName: {
+      type: String,
+      trim: true,
+      maxlength: 60,
+      default: function defaultDisplayName() {
+        return this.username;
+      }
+    },
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: 280,
+      default: ''
+    },
+    avatarUrl: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    lastOnline: {
+      type: Date,
+      default: Date.now
+    },
+    followers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      }
+    ],
+    following: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      }
+    ],
     recoveryQuestion: {
       type: String,
       required: true,

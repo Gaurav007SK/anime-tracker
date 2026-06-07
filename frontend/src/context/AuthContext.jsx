@@ -106,6 +106,23 @@ export function AuthProvider({ children }) {
     clearAuth();
   };
 
+  const updateUser = (updates) => {
+    if (!authState.user) {
+      return;
+    }
+
+    const nextUser = {
+      ...authState.user,
+      ...updates
+    };
+
+    persistAuth(authState.token, nextUser);
+    setAuthState((current) => ({
+      ...current,
+      user: nextUser
+    }));
+  };
+
   const fetchRecoveryQuestion = async (username) => {
     const response = await authAPI.getRecoveryQuestion(username);
     return response.data?.data;
@@ -125,6 +142,7 @@ export function AuthProvider({ children }) {
       signup,
       login,
       logout,
+      updateUser,
       fetchRecoveryQuestion,
       resetPassword
     }),

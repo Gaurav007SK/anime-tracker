@@ -200,6 +200,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  text-decoration: none;
   color: var(--text-primary);
   border: 1px solid rgba(132, 196, 245, 0.35);
   background: rgba(12, 28, 44, 0.72);

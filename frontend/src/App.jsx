@@ -19,6 +19,8 @@ import AnimeDetail from './pages/AnimeDetail';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import RecoverAccount from './pages/RecoverAccount';
+import Profile from './pages/Profile';
+import EditProfile from './pages/EditProfile';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import './App.css';
@@ -62,10 +64,15 @@ function AppShell({ user, logout, loading }) {
     if (user) {
       return (
         <>
-          <div className={`auth-user-pill auth-user-pill-${variant}`} title={`Signed in as ${user.username}`}>
+          <Link
+            to="/profile"
+            className={`auth-user-pill auth-user-pill-${variant}`}
+            title={`Open profile for ${user.username}`}
+            onClick={closeMobileMenu}
+          >
             <UserRound size={14} />
-            <span>{user.username}</span>
-          </div>
+            <span>{user.displayName || user.username}</span>
+          </Link>
           <button type="button" className={`logout-btn logout-btn-${variant}`} onClick={logout}>
             <LogOut size={14} />
             <span>Logout</span>
@@ -149,10 +156,10 @@ function AppShell({ user, logout, loading }) {
 
             {user ? (
               <>
-                <div className="auth-user-pill auth-user-pill-mobile" title={`Signed in as ${user.username}`}>
+                <Link to="/profile" className="auth-user-pill auth-user-pill-mobile" title={`Open profile for ${user.username}`} onClick={closeMobileMenu}>
                   <UserRound size={14} />
-                  <span>{user.username}</span>
-                </div>
+                  <span>{user.displayName || user.username}</span>
+                </Link>
                 <button type="button" className="logout-btn logout-btn-mobile" onClick={() => { logout(); closeMobileMenu(); }}>
                   <LogOut size={14} />
                   <span>Logout</span>
@@ -181,6 +188,16 @@ function AppShell({ user, logout, loading }) {
           <Route path="/" element={<Home />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/genre/:genreKey" element={<GenreResults />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/:username" element={<Profile />} />
+          <Route
+            path="/profile/edit"
+            element={(
+              <ProtectedRoute>
+                <EditProfile />
+              </ProtectedRoute>
+            )}
+          />
           <Route
             path="/my-list"
             element={(
