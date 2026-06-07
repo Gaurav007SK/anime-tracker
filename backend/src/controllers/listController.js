@@ -1,4 +1,5 @@
 const animeListService = require('../services/animeListService');
+const UserAnime = require('../models/UserAnime');
 
 const listController = {
   async addToList(req, res) {
@@ -78,14 +79,41 @@ const listController = {
       const { id } = req.params;
       const { progress, status, rating, notes, titleEnglish, titleJapanese } = req.body;
 
-      const anime = await animeListService.updateAnime(userId, id, {
-        progress,
-        status,
-        rating,
-        notes,
-        titleEnglish,
-        titleJapanese
+      const existingAnime = await UserAnime.findOne({ _id: id, user: userId });
+      if (!existingAnime) {
+        return res.status(404).json({ error: 'Anime not found in your list' });
+      }
+
+      const updatePayload = { status, rating, notes, titleEnglish, titleJapanese };
+
+      if (progress !== undefined) {
+        updatePayload.progress = progress;
+        if (progress > existingAnime.progress) {
+          updatePayload.$push = {
+            history: { episode: progress, date: new Date() }
+          };
+          if (!existingAnime.startDate) {
+            updatePayload.startDate = new Date();
+          }
+          if (existingAnime.episodes && progress >= existingAnime.episodes) {
+            updatePayload.finishDate = new Date();
+            updatePayload.status = 'watched-this-year';
+          }
+        }
+      }
+
+      if ((status === 'watched-this-year' || status === 'completed') && !existingAnime.finishDate) {
+        updatePayload.finishDate = new Date();
+      }
+      
+      // Remove undefined
+      Object.keys(updatePayload).forEach(key => {
+        if (updatePayload[key] === undefined) {
+          delete updatePayload[key];
+        }
       });
+
+      const anime = await animeListService.updateAnime(userId, id, updatePayload);
 
       res.json({ success: true, data: anime });
     } catch (error) {

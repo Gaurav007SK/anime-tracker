@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CheckCircle, Trash2, Star, Tv } from 'lucide-react';
+import { CheckCircle, Trash2, Star, Tv, Activity, Trophy, Calendar, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import '../styles/UserAnimeCard.css';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -31,6 +31,40 @@ const getProgressLabel = (anime) => {
   return `${progress} eps`;
 };
 
+const getStats = (anime) => {
+  const { history, startDate, finishDate } = anime;
+  if (!history || history.length === 0) return null;
+
+  let days = null;
+  const validStart = startDate || (history.length > 0 ? history[0].date : null);
+  const validEnd = finishDate || (history.length > 0 ? history[history.length - 1].date : null);
+
+  if (validStart && validEnd) {
+    const start = new Date(validStart);
+    const end = new Date(validEnd);
+    const diffTime = Math.abs(end - start);
+    days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (days === 0) days = 1; // At least 1 day if started and finished same day
+  }
+
+  const dateCounts = {};
+  history.forEach(entry => {
+    const d = new Date(entry.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    dateCounts[d] = (dateCounts[d] || 0) + 1;
+  });
+
+  let maxCount = 0;
+  let maxDate = null;
+  for (const [date, count] of Object.entries(dateCounts)) {
+    if (count > maxCount) {
+      maxCount = count;
+      maxDate = date;
+    }
+  }
+
+  return { days, maxCount, maxDate };
+};
+
 function UserAnimeCard({
   anime,
   onRemove,
@@ -43,12 +77,17 @@ function UserAnimeCard({
 }) {
   const cardRef = useRef(null);
   const [confirmAction, setConfirmAction] = useState(null);
+  const [showStats, setShowStats] = useState(false);
+  
   const displayTitle = getDisplayTitle(anime);
   const japaneseSubtitle = getJapaneseSubtitle(anime, displayTitle);
   const progressLabel = getProgressLabel(anime);
   const totalEpisodes = Number.isFinite(Number(anime?.episodes)) ? Number(anime.episodes) : null;
   const currentProgress = Number.isFinite(Number(anime?.progress)) ? Number(anime.progress) : 0;
   const isAtMaxEpisodes = totalEpisodes ? currentProgress >= totalEpisodes : false;
+  
+  const stats = getStats(anime);
+  const latestHistory = anime?.history?.length > 0 ? anime.history[anime.history.length - 1] : null;
 
   const handleOpen = () => {
     if (onOpen) {
@@ -172,12 +211,35 @@ function UserAnimeCard({
           ) : null}
         </div>
 
+        {showProgress && latestHistory && (
+          <div className="latest-history">
+            <Clock size={12} />
+            <span>Watched Ep {latestHistory.episode} on {new Date(latestHistory.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+          </div>
+        )}
+
         {(onUpdate && (showProgress || showCompletedBadge || showStartWatching)) ? (
           <div className="card-action">
             {showCompletedBadge ? (
-              <div className="completed-status" aria-label="Completed">
-                <CheckCircle size={14} aria-hidden="true" />
-                Completed
+              <div className="completed-badge-container">
+                <div className="completed-status" aria-label="Completed">
+                  <CheckCircle size={14} aria-hidden="true" />
+                  {/* Completed */}
+                </div>
+                {stats && (
+                  <button 
+                    type="button" 
+                    className="stats-toggle-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowStats(!showStats);
+                    }}
+                    aria-label="Toggle Summary"
+                  >
+                    <Activity size={14} />
+                    {showStats ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                  </button>
+                )}
               </div>
             ) : null}
 
@@ -238,6 +300,21 @@ function UserAnimeCard({
             ) : null}
           </div>
         ) : null}
+
+        {showStats && stats && (
+          <div className="card-stats">
+            <div className="stat-item">
+              <Calendar size={14} />
+              <span>Finished in {stats.days} days</span>
+            </div>
+            {stats.maxCount > 0 && (
+              <div className="stat-item">
+                <Trophy size={14} />
+                <span>Max: {stats.maxCount} eps on {stats.maxDate}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {onRemove ? (

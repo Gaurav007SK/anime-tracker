@@ -41,6 +41,19 @@ const userAnimeSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  startDate: {
+    type: Date
+  },
+  finishDate: {
+    type: Date
+  },
+  history: [{
+    episode: Number,
+    date: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   notes: String
 });
 
