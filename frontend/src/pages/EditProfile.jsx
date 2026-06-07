@@ -62,9 +62,20 @@ function EditProfile() {
 
   const pageTitle = useMemo(() => 'Edit Profile', []);
 
+
+
   useEffect(() => {
-    document.title = pageTitle;
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+
+    document.title = pageTitle ;
+
+    return () => {
+      document.title = 'Otaku Control Room';
+    };
   }, [pageTitle]);
+  
 
   useEffect(() => {
     const loadProfile = async () => {
