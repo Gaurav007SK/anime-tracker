@@ -63,10 +63,20 @@ function Profile() {
     return `${profile.username} | Anime Tracker`;
   }, [profile]);
 
-  useEffect(() => {
-    document.title = profileTitle;
-  }, [profileTitle]);
 
+
+useEffect(() => {
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+
+    document.title = profileTitle ;
+
+    return () => {
+      document.title = 'Otaku Control Room';
+    };
+  }, [profileTitle]);
+  
   useEffect(() => {
     const loadProfile = async () => {
       if (!resolvedUsername) {
